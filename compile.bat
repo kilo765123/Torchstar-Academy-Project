@@ -1,0 +1,2 @@
+emcc game.cpp -o final.js -s EXPORTED_FUNCTIONS="['_init_game','_go_to_difficulty','_set_difficulty','_get_difficulty','_travel_to','_check_answer','_roll_gacha','_load_save_data','_get_p_hp','_get_p_lvl','_get_p_atk','_get_p_sp','_get_p_money','_get_state','_get_q_text','_get_q_opt','_is_opt_hidden','_get_boss_name','_get_m_hp','_get_m_max_hp','_exit_shop','_buy_item','_use_skill','_get_q_hint','_get_p_luck','_get_last_dmg_boss','_get_last_dmg_player','_is_last_crit','_get_final_score']" -s EXPORTED_RUNTIME_METHODS="['UTF8ToString']" -s NO_EXIT_RUNTIME=1
+

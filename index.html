@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>Scholar Quest | Final</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background: #020617; color: white; font-family: monospace; overflow: hidden; user-select: none; }
+        .screen { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 10; }
+        
+        #menu-view { background: linear-gradient(rgba(0,0,0,0.8), rgba(0,0,0,0.8)), url('imagemenumap2.jpeg'); background-size: cover; background-position: center; background-repeat: no-repeat; }
+        #combat-view { background: linear-gradient(rgba(0,0,0,0.8), rgba(0,0,0,0.8)), url('Classroom1.jpeg'); background-size: cover; background-position: center; background-repeat: no-repeat; }
+        
+        .wing-box { transition: all 0.3s; cursor: pointer; position: relative; overflow: hidden; border: 2px solid #475569; background-size: cover; background-position: center; background-repeat: no-repeat; }
+        .wing-box:hover { transform: scale(1.02); border-color: #d946ef; z-index: 20; box-shadow: 0 0 20px rgba(217, 70, 239, 0.5); }
+        .wing-overlay { background: rgba(0,0,0,0.6); position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; transition: 0.3s; pointer-events: none; }
+        .wing-box:hover .wing-overlay { background: rgba(0,0,0,0.3); }
+
+        .cafeteria-box { background-color: #eab308; color: black; border: 4px solid #fef08a; cursor: pointer; transition: 0.3s; display: flex; align-items: center; justify-content: center; font-weight: 900; letter-spacing: 2px; }
+        .cafeteria-box:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(234, 179, 8, 0.4); background-color: #facc15; }
+
+        .opt-btn { background: #1e293b; border: 2px solid #a855f7; padding: 15px; border-radius: 8px; width: 100%; text-align: left; transition: 0.2s; }
+        .opt-btn:hover { background: #334155; transform: translateX(5px); }
+        .skill-btn { font-size: 0.75rem; padding: 8px; border-radius: 8px; font-weight: bold; border: 1px solid white; transition: 0.2s; }
+
+        /* Animation Classes */
+        @keyframes shake {
+            0% { transform: translate(1px, 1px) rotate(0deg); }
+            10% { transform: translate(-1px, -2px) rotate(-1deg); }
+            20% { transform: translate(-3px, 0px) rotate(1deg); }
+            30% { transform: translate(3px, 2px) rotate(0deg); }
+            40% { transform: translate(1px, -1px) rotate(1deg); }
+            50% { transform: translate(-1px, 2px) rotate(-1deg); }
+            60% { transform: translate(-3px, 1px) rotate(0deg); }
+            70% { transform: translate(3px, 1px) rotate(-1deg); }
+            80% { transform: translate(-1px, -1px) rotate(1deg); }
+            90% { transform: translate(1px, 2px) rotate(0deg); }
+            100% { transform: translate(1px, -2px) rotate(-1deg); }
+        }
+        .shake-anim { animation: shake 0.4s; }
+
+        @keyframes floatUp {
+            0% { opacity: 1; transform: translateY(0) scale(1); }
+            100% { opacity: 0; transform: translateY(-80px) scale(1.5); }
+        }
+        .dmg-float {
+            position: absolute; animation: floatUp 1s ease-out forwards; font-weight: 900; pointer-events: none; z-index: 100;
+            text-shadow: 2px 2px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000;
+        }
+        .dmg-crit { color: #fbbf24; font-size: 3rem; }
+        .dmg-normal { color: #f87171; font-size: 2rem; }
+        .dmg-player { color: #ef4444; font-size: 2.5rem; }
+    </style>
+</head>
+<body>
+
+    <div id="hud" class="hidden fixed top-0 left-0 right-0 p-4 flex justify-between items-center bg-slate-900/90 border-b border-fuchsia-500 z-50">
+        <div class="flex flex-col gap-1">
+            <span class="text-fuchsia-400 font-bold text-sm">LVL: <span id="p-lvl">1</span></span>
+            <span class="text-yellow-400 font-bold text-sm">Rp <span id="p-money">0</span></span>
+        </div>
+        <div class="w-1/3 relative" id="player-hp-container">
+            <div class="h-4 bg-black border border-fuchsia-500 rounded-full overflow-hidden">
+                <div id="p-hp-bar" class="h-full bg-fuchsia-600 transition-all"></div>
+            </div>
+        </div>
+        <div class="flex gap-2 items-center">
+            <span class="text-green-400 font-bold mr-2 text-sm">LUCK: <span id="p-luck">1</span></span>
+            <span class="text-blue-400 font-bold mr-2 text-sm">SP: <span id="p-sp">3</span></span>
+            <button onclick="playSfx('click'); saveGame()" class="bg-blue-600 px-3 py-1 rounded text-xs font-bold hover:bg-blue-500">SAVE</button>
+            <button onclick="playSfx('click'); instance._roll_gacha(); triggerCombatEffects(); update();" class="bg-fuchsia-600 px-3 py-1 rounded text-xs font-bold hover:bg-fuchsia-500">UPG ATK (1 SP)</button>
+        </div>
+    </div>
+
+    <div id="menu-view" class="screen">
+        <h1 class="text-6xl font-black italic mb-2 text-transparent bg-clip-text bg-gradient-to-r from-fuchsia-500 to-purple-600">SCHOLAR QUEST</h1>
+        <div class="flex gap-4 mt-8">
+            <button onclick="playSfx('click'); startGame()" class="bg-fuchsia-600 px-8 py-3 rounded-full text-xl font-black hover:scale-110 transition border-2 border-white">MULAI</button>
+            <button id="btn-continue" onclick="playSfx('click'); loadGame()" class="hidden bg-slate-800 border-2 border-fuchsia-500 px-8 py-3 rounded-full text-xl font-bold hover:bg-slate-700">LANJUT</button>
+        </div>
+    </div>
+
+    <div id="difficulty-view" class="screen hidden" style="background: linear-gradient(135deg, #0f172a 0%, #312e81 100%);">
+        <h2 class="text-5xl font-black mb-12 text-transparent bg-clip-text bg-gradient-to-r from-fuchsia-400 to-purple-600 drop-shadow-lg">PILIH JALUR BELAJARMU</h2>
+        <div class="flex gap-8">
+            <button onclick="playSfx('click'); selectDifficulty(0)" class="group relative w-64 h-80 bg-slate-800/50 border-4 border-fuchsia-500 rounded-2xl flex flex-col items-center justify-center gap-4 hover:bg-fuchsia-900/50 hover:scale-105 hover:shadow-[0_0_30px_rgba(217,70,239,0.5)] transition-all overflow-hidden backdrop-blur-sm">
+                <div class="text-6xl group-hover:scale-110 transition-transform">🎓</div>
+                <h3 class="text-3xl font-black text-white">EASY</h3>
+                <div class="text-sm text-fuchsia-200 font-bold text-center mt-2 opacity-80 group-hover:opacity-100">
+                    <p>HP: 250 | ATK: 40</p>
+                    <p>Modal: Rp 300</p>
+                    <p class="mt-4 text-xs italic opacity-75">"Pertanyaan Dasar Umum"</p>
+                </div>
+            </button>
+            <button onclick="playSfx('click'); selectDifficulty(1)" class="group relative w-64 h-80 bg-slate-800/50 border-4 border-red-600 rounded-2xl flex flex-col items-center justify-center gap-4 hover:bg-red-900/50 hover:scale-105 hover:shadow-[0_0_30px_rgba(220,38,38,0.5)] transition-all overflow-hidden backdrop-blur-sm">
+                <div class="text-6xl group-hover:scale-110 transition-transform">🔥</div>
+                <h3 class="text-3xl font-black text-white">HARD</h3>
+                <div class="text-sm text-red-200 font-bold text-center mt-2 opacity-80 group-hover:opacity-100">
+                    <p>HP: 150 | ATK: 25</p>
+                    <p>Modal: Rp 50</p>
+                    <p class="mt-4 text-xs italic opacity-75">"Top 20 Senior High Level"</p>
+                </div>
+            </button>
+        </div>
+    </div>
+
+    <div id="explore-view" class="hidden w-full h-screen flex flex-col items-center justify-center bg-slate-900 p-8">
+        <h2 class="text-2xl font-bold text-slate-300 mb-4">PILIH LOKASI</h2>
+        <div class="w-full max-w-5xl h-[600px] flex flex-col gap-4">
+            <div class="flex flex-1 gap-4 h-3/4">
+                <div onclick="playSfx('click'); travelTo(0);" class="wing-box flex-1 rounded-xl" style="background-image: url('image_d0833c.jpg');"><div class="wing-overlay"><h3 class="text-3xl font-black text-white uppercase">Sayap Kiri (IPS)</h3></div></div>
+                <div onclick="playSfx('click'); travelTo(1);" class="wing-box flex-1 rounded-xl" style="background-image: url('image_d160d8.jpg');"><div class="wing-overlay"><h3 class="text-3xl font-black text-white uppercase">Sayap Tengah (MTK)</h3></div></div>
+                <div onclick="playSfx('click'); travelTo(2);" class="wing-box flex-1 rounded-xl" style="background-image: url('image_d0833c.jpg');"><div class="wing-overlay"><h3 class="text-3xl font-black text-white uppercase">Sayap Kanan (Sains)</h3></div></div>
+            </div>
+            <div onclick="playSfx('click'); travelTo(3);" class="cafeteria-box h-24 rounded-xl text-3xl shadow-lg relative group">
+                <span class="mr-4 text-4xl">🍔</span> KANTIN SEKOLAH (SHOP) <span class="ml-4 text-4xl">🍹</span>
+            </div>
+        </div>
+    </div>
+
+    <div id="shop-view" class="screen hidden bg-slate-900">
+        <h2 class="text-4xl text-yellow-400 font-black mb-8 bg-slate-800 px-8 py-2 rounded-full border border-yellow-500">MENU KANTIN</h2>
+        <div class="flex flex-wrap justify-center gap-6 max-w-4xl">
+            <div onclick="buyItem(0)" class="bg-slate-800 p-6 border-2 border-slate-600 hover:border-yellow-400 cursor-pointer w-48 text-center rounded-xl transition hover:scale-105"><div class="text-5xl mb-4">🍢</div><h3 class="font-bold">Gorengan</h3><p class="text-sm text-slate-400">+50 HP</p><div class="bg-yellow-500 text-black font-bold mt-4 py-1 rounded">Rp 50</div></div>
+            <div onclick="buyItem(1)" class="bg-slate-800 p-6 border-2 border-slate-600 hover:border-blue-400 cursor-pointer w-48 text-center rounded-xl transition hover:scale-105"><div class="text-5xl mb-4">🍹</div><h3 class="font-bold">Es Teh</h3><p class="text-sm text-slate-400">+1 SP</p><div class="bg-yellow-500 text-black font-bold mt-4 py-1 rounded">Rp 100</div></div>
+            <div onclick="buyItem(2)" class="bg-slate-800 p-6 border-2 border-slate-600 hover:border-red-400 cursor-pointer w-48 text-center rounded-xl transition hover:scale-105"><div class="text-5xl mb-4">📚</div><h3 class="font-bold">Contekan</h3><p class="text-sm text-slate-400">+ATK</p><div class="bg-yellow-500 text-black font-bold mt-4 py-1 rounded">Rp 200</div></div>
+            <div onclick="buyItem(3)" class="bg-slate-800 p-6 border-2 border-slate-600 hover:border-green-400 cursor-pointer w-48 text-center rounded-xl transition hover:scale-105"><div class="text-5xl mb-4">🍀</div><h3 class="font-bold">Jimat</h3><p class="text-sm text-slate-400">+1 LUCK (Crit)</p><div class="bg-yellow-500 text-black font-bold mt-4 py-1 rounded">Rp 300</div></div>
+        </div>
+        <button onclick="playSfx('click'); instance._exit_shop(); update();" class="mt-12 text-white hover:text-red-400 underline font-bold text-xl">Keluar Kantin</button>
+    </div>
+
+    <div id="combat-view" class="screen hidden">
+        <div class="w-full max-w-4xl flex gap-8 px-8 items-end pb-12">
+            <div class="flex-1">
+                <div class="bg-slate-900/95 border-2 border-fuchsia-500 p-6 rounded-2xl shadow-2xl backdrop-blur mb-6">
+                    <h2 id="q-text" class="text-xl font-bold mb-2 text-white leading-relaxed">...</h2>
+                    <button onclick="showHint()" class="text-yellow-400 text-sm italic underline mb-4 hover:text-yellow-300 outline-none">💡 Tampilkan Hint</button>
+                    <p id="q-hint-text" class="hidden text-slate-200 mt-2 mb-4 text-sm bg-slate-800/80 p-3 rounded border border-slate-600 font-bold"></p>
+                    
+                    <div id="q-options" class="grid grid-cols-2 gap-3 mt-2"></div>
+                </div>
+                <div class="flex gap-3">
+                    <button onclick="useSkill(0)" class="skill-btn bg-green-600 hover:bg-green-500 flex-1 py-3 border-none">💊 HEAL (2 SP)</button>
+                    <button onclick="useSkill(1)" class="skill-btn bg-yellow-600 hover:bg-yellow-500 flex-1 py-3 border-none">👀 50:50 (3 SP)</button>
+                    <button onclick="useSkill(2)" class="skill-btn bg-purple-600 hover:bg-purple-500 flex-1 py-3 border-none">⏩ SKIP (4 SP)</button>
+                </div>
+            </div>
+            <div class="w-72 text-center bg-black/40 p-4 rounded-xl border border-slate-600 backdrop-blur relative" id="boss-container">
+                <h3 id="m-name" class="text-red-500 font-black text-xl mb-2 uppercase drop-shadow">BOSS</h3>
+                <div class="h-4 bg-black border border-red-600 rounded-full mb-4 overflow-hidden"><div id="m-hp-bar" class="h-full bg-red-600 transition-all"></div></div>
+                <img id="boss-image" src="Monsterimage3.jpeg" class="w-full rounded-lg border-2 border-red-800 shadow-xl object-contain bg-slate-800 h-48">
+            </div>
+        </div>
+    </div>
+
+    <div id="victory-view" class="screen hidden bg-green-900 text-center">
+        <h1 class="text-8xl font-black mb-4 text-yellow-400 drop-shadow-[0_5px_5px_rgba(0,0,0,0.8)]">LULUS!</h1>
+        <div class="bg-slate-900/80 border-4 border-yellow-500 p-8 rounded-2xl my-6">
+            <h2 class="text-3xl font-bold mb-2">FINAL SCORE</h2>
+            <p id="final-score" class="text-6xl font-black text-fuchsia-400">0</p>
+        </div>
+        <button onclick="playSfx('click'); location.reload()" class="bg-white text-black px-10 py-3 rounded-full font-bold text-xl hover:bg-slate-200 transition">Main Lagi</button>
+    </div>
+    <div id="lose-view" class="screen hidden bg-red-900 text-center"><h1 class="text-8xl font-black mb-4">DO!</h1><button onclick="playSfx('click'); location.reload()" class="mt-8 bg-white text-black px-10 py-3 rounded-full font-bold text-xl">Remedial</button></div>
+
+    <script>
+        let audioCtx;
+        function playSfx(type) {
+            try {
+                if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain); gain.connect(audioCtx.destination);
+                const now = audioCtx.currentTime;
+                if (type === 'click') {
+                    osc.type = 'sine'; osc.frequency.setValueAtTime(600, now);
+                    gain.gain.setValueAtTime(0.1, now); gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+                    osc.start(now); osc.stop(now + 0.1);
+                } else if (type === 'success') {
+                    osc.type = 'triangle'; osc.frequency.setValueAtTime(800, now); osc.frequency.setValueAtTime(1200, now + 0.1);
+                    gain.gain.setValueAtTime(0.1, now); gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+                    osc.start(now); osc.stop(now + 0.3);
+                } else if (type === 'error') {
+                    osc.type = 'sawtooth'; osc.frequency.setValueAtTime(300, now); osc.frequency.setValueAtTime(200, now + 0.1);
+                    gain.gain.setValueAtTime(0.1, now); gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+                    osc.start(now); osc.stop(now + 0.3);
+                } else if (type === 'crit') {
+                    osc.type = 'square'; osc.frequency.setValueAtTime(1000, now); osc.frequency.setValueAtTime(1500, now + 0.1);
+                    gain.gain.setValueAtTime(0.2, now); gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+                    osc.start(now); osc.stop(now + 0.4);
+                }
+            } catch (e) { console.log(e); }
+        }
+
+        function spawnFloatingText(targetId, text, typeClass) {
+            const target = document.getElementById(targetId);
+            if(!target) return;
+            const rect = target.getBoundingClientRect();
+            const el = document.createElement('div');
+            el.className = `dmg-float ${typeClass}`;
+            el.innerText = text;
+            
+            const offsetX = (Math.random() - 0.5) * 40;
+            const offsetY = (Math.random() - 0.5) * 40;
+            
+            el.style.left = (rect.left + (rect.width / 2) - 20 + offsetX) + 'px';
+            el.style.top = (rect.top + (rect.height / 2) - 20 + offsetY) + 'px';
+            document.body.appendChild(el);
+            setTimeout(() => el.remove(), 1000);
+        }
+
+        var instance;
+        var Module = { 
+            onRuntimeInitialized: () => { 
+                instance = Module; 
+                instance._init_game(Date.now() % 1000000000); 
+                update(); 
+            }
+        };
+
+        function startGame() { instance._go_to_difficulty(); update(); }
+        function selectDifficulty(m) { instance._set_difficulty(m); update(); }
+        function travelTo(id) { if(instance && instance._travel_to) { instance._travel_to(id); update(); } }
+
+        function triggerCombatEffects() {
+            const dmgBoss = instance._get_last_dmg_boss();
+            const dmgPlayer = instance._get_last_dmg_player();
+            const isCrit = instance._is_last_crit();
+
+            if (dmgBoss > 0) {
+                spawnFloatingText('boss-image', `-${dmgBoss}`, isCrit ? 'dmg-crit' : 'dmg-normal');
+                if (isCrit) playSfx('crit'); else playSfx('success');
+                
+                const bossImg = document.getElementById('boss-container');
+                bossImg.classList.remove('shake-anim'); void bossImg.offsetWidth; 
+                bossImg.classList.add('shake-anim');
+            }
+            if (dmgPlayer > 0) {
+                spawnFloatingText('player-hp-container', `-${dmgPlayer}`, 'dmg-player');
+                playSfx('error');
+                
+                const combatView = document.getElementById('combat-view');
+                combatView.classList.remove('shake-anim'); void combatView.offsetWidth; 
+                combatView.classList.add('shake-anim');
+            }
+        }
+
+        function buyItem(id) { 
+            const m = instance._get_p_money(); instance._buy_item(id); 
+            if(instance._get_p_money() < m) { playSfx('success'); alert("Item Terbeli!"); } else { playSfx('error'); alert("Uang tidak cukup!"); }
+            update(); 
+        }
+
+        function useSkill(id) { 
+            const sp = instance._get_p_sp(); 
+            if((id == 0 && sp < 2) || (id == 1 && sp < 3) || (id == 2 && sp < 4)) { playSfx('error'); alert("SP Kurang!"); return; } 
+            playSfx('success'); 
+            instance._use_skill(id); 
+            triggerCombatEffects();
+            update(); 
+        }
+        
+        function saveGame() { 
+            localStorage.setItem('sq_save', JSON.stringify({lvl:instance._get_p_lvl(), hp:instance._get_p_hp(), sp:instance._get_p_sp(), atk:instance._get_p_atk(), mny:instance._get_p_money(), diff:instance._get_difficulty(), luck:instance._get_p_luck()})); 
+            playSfx('success'); alert("Saved!"); 
+        }
+        
+        function loadGame() { 
+            const d = JSON.parse(localStorage.getItem('sq_save')); 
+            if(d && instance) { instance._load_save_data(d.lvl, d.hp, d.sp, d.atk, d.mny, d.diff || 0, d.luck || 1); update(); } 
+        }
+
+        function showHint() {
+            playSfx('click');
+            let el = document.getElementById('q-hint-text');
+            el.innerText = UTF8ToString(instance._get_q_hint());
+            el.classList.remove('hidden');
+        }
+        
+        function update() {
+            if(!instance) return;
+            const s = UTF8ToString(instance._get_state());
+            ['menu','difficulty','explore','combat','shop','victory','lose'].forEach(id => {
+                const el = document.getElementById(id+'-view');
+                if(el) el.classList.toggle('hidden', !id.includes(s==='dead'?'lose':s));
+            });
+            document.getElementById('hud').classList.toggle('hidden', s!=='explore' && s!=='combat');
+            document.getElementById('btn-continue').classList.toggle('hidden', s!=='menu' || !localStorage.getItem('sq_save'));
+            
+            document.getElementById('p-lvl').innerText=instance._get_p_lvl();
+            document.getElementById('p-sp').innerText=instance._get_p_sp();
+            document.getElementById('p-money').innerText=instance._get_p_money();
+            document.getElementById('p-luck').innerText=instance._get_p_luck();
+            document.getElementById('p-hp-bar').style.width=(instance._get_p_hp() / 250 * 100)+"%"; 
+
+            if(s==='combat') {
+                document.getElementById('q-hint-text').classList.add('hidden');
+                document.getElementById('q-text').innerText=UTF8ToString(instance._get_q_text());
+                const bossName = UTF8ToString(instance._get_boss_name());
+                document.getElementById('m-name').innerText = bossName;
+                const bossImg = document.getElementById('boss-image');
+                if (bossName.includes("Wakil")) bossImg.src = "image7.jpeg";
+                else if (bossName.includes("Bapak")) bossImg.src = "image8.jpeg";
+                else bossImg.src = "Monsterimage3.jpeg";
+
+                document.getElementById('m-hp-bar').style.width=(instance._get_m_hp()/instance._get_m_max_hp()*100)+"%";
+                const b = document.getElementById('q-options'); b.innerHTML='';
+                for(let i=0; i<4; i++) {
+                    let btn = document.createElement('button'); 
+                    btn.className = 'opt-btn font-bold text-white';
+                    if(instance._is_opt_hidden(i)) { 
+                        btn.disabled=true; btn.innerText=""; 
+                    } else { 
+                        btn.innerText = UTF8ToString(instance._get_q_opt(i)); 
+                        btn.onclick = () => { 
+                            instance._check_answer(i); 
+                            triggerCombatEffects();
+                            update(); 
+                        }; 
+                    }
+                    b.appendChild(btn);
+                }
+            } else if (s === 'victory') {
+                document.getElementById('final-score').innerText = instance._get_final_score();
+            }
+        }
+    </script>
+    <script async src="final.js"></script>
+</body>
+</html>
+
