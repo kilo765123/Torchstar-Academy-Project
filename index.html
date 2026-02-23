@@ -300,9 +300,9 @@
                 const bossName = UTF8ToString(instance._get_boss_name());
                 document.getElementById('m-name').innerText = bossName;
                 const bossImg = document.getElementById('boss-image');
-                if (bossName.includes("Wakil")) bossImg.src = "image7.jpeg";
-                else if (bossName.includes("Bapak")) bossImg.src = "image8.jpeg";
-                else bossImg.src = "Monsterimage3.jpeg";
+                if (bossName.includes("Wakil")) bossImg.src = "VicePrincipal.jpeg";
+                else if (bossName.includes("Bapak")) bossImg.src = "Principal.jpeg";
+                else bossImg.src = "Boss1.jpeg";
 
                 document.getElementById('m-hp-bar').style.width=(instance._get_m_hp()/instance._get_m_max_hp()*100)+"%";
                 const b = document.getElementById('q-options'); b.innerHTML='';
@@ -329,4 +329,5 @@
     <script async src="final.js"></script>
 </body>
 </html>
+
 
